@@ -6,6 +6,7 @@ criticalAlpha = cfg.criticalAlpha;
 FDRMethod = cfg.MCPMethod;
 ktstcfg = [];
 ktstcfg.iterations = cfg.iterations;
+slidingWinSize = 2;
 for z = 1 : channelNum
     features = zeros(coefNum*coefNum,trialNum);
     for i = 1 : trialNum
@@ -29,20 +30,20 @@ end
 significantChannels = find(hChannels);
 for i = 1 : length(significantChannels)
     data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
-    data = padarray(data,[0,floor(coefNum/2),0],'replicate');
-    for j = 1+floor(coefNum/2) : frequencyBinNum+floor(coefNum/2)
+    data = padarray(data,[0,slidingWinSize,0],'replicate');
+    for j = 1+slidingWinSize : frequencyBinNum+slidingWinSize
         features = zeros(coefNum,trialNum);
         for k = 1 : trialNum
             D =[];
-            D = dct2(squeeze(data(k,j-2:j+2,:)));
+            D = dct2(squeeze(data(k,j-slidingWinSize:j+slidingWinSize,:)));
             features(:,k) = reshape(D(1,1:coefNum),coefNum,1);
 %                       features(:,k) = squeeze(data_tf.powspctrm(k,significantChannels(i),j,:));
         end
         features(isnan(features)) = 0;
         features = mapstd(features);
         % KTST
-        [pFreqs(i,j-floor(coefNum/2))] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
-        disp(strcat(num2str(i),'/',num2str(length(significantChannels)),':',num2str(j-floor(coefNum/2)),':',num2str(pFreqs(i,j-floor(coefNum/2)))));
+        [pFreqs(i,j-slidingWinSize)] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
+        disp(strcat(num2str(i),'/',num2str(length(significantChannels)),':',num2str(j-slidingWinSize),':',num2str(pFreqs(i,j-slidingWinSize))));
     end
 end
 if ~strcmp(FDRMethod{2},'BF')
@@ -56,18 +57,18 @@ end
 significantFreqChan = significantChannels(temp);
 for i = 1 : length(significantChannels)
     data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
-    data = padarray(data,[0,0,floor(coefNum/2)],'replicate');
-    for j = 1+floor(coefNum/2) : timeBinNum+floor(coefNum/2) 
+    data = padarray(data,[0,0,slidingWinSize],'replicate');
+    for j = 1+slidingWinSize : timeBinNum+slidingWinSize 
         features = zeros(coefNum,trialNum);
         for k = 1 : trialNum
             D =[];
-            D = dct2(squeeze(data(k,:,j-2:j+2)));
+            D = dct2(squeeze(data(k,:,j-slidingWinSize:j+slidingWinSize)));
             features(:,k) = reshape(D(1:coefNum,1),coefNum,1);
         end
         features(isnan(features)) = 0;
         features = mapstd(features);
-        [pTime(i,j-floor(coefNum/2))] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
-        disp(strcat(num2str(i),'/',num2str(length(significantChannels)),':',num2str(j-floor(coefNum/2)),':',num2str(pTime(i,j-floor(coefNum/2)))));
+        [pTime(i,j-slidingWinSize)] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
+        disp(strcat(num2str(i),'/',num2str(length(significantChannels)),':',num2str(j-slidingWinSize),':',num2str(pTime(i,j-slidingWinSize))));
     end
 end
 if ~strcmp(FDRMethod{3},'BF')

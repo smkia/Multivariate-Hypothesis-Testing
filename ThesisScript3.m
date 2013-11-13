@@ -7,9 +7,9 @@ cfgSim.timeNum = 50;
 cfgSim.freqNum = 45;
 cfgSim.affectedChannel = [208:217];
 cfgSim.sigmaVar = [4,7];
-%cfgSim.ampVar = [7,12]; % 1
+cfgSim.ampVar = [7,12]; % 1
 %cfgSim.ampVar = [70,120]; %2
-cfgSim.ampVar = [270,320]; %3
+%cfgSim.ampVar = [270,320]; %3
 cfgSim.effectSize = 11;
 cfgSim.timeVar = [21,35];
 cfgSim.freqVar = [15,29];
@@ -17,10 +17,10 @@ cfgSim.freqVar = [15,29];
 targets = zeros(1,cfgSim.trialNum);
 targets(1,1:round(cfgSim.trialNum/2)) = 1;
 % Hierarchical Method config
-cfgHrc.coefNum = 5;
+%cfgHrc.coefNum = 5;
 cfgHrc.criticalAlpha = 0.05;
 cfgHrc.iterations = 10000;
-% Loop
+% Experiment 1
 for i = 1 : 10
     % Data simulation
     [data_tf,mask,SNR(i)] = simulatingData(cfgSim,data_tf);
@@ -44,6 +44,20 @@ for i = 1 : 10
     disp(i);
 end
 
+% Experiment 2
+for i = 1 : 10
+    % Data simulation
+    [data_tf,mask,SNR(i)] = simulatingData(cfgSim,data_tf);
+    for j = 1 : 10
+        % Hierarchy test Bonferroni
+        cfgHrc.coefNum = j;
+        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
+        save('tempResult.mat','SNR','sensitivityHierarchyBF','specificityHierarchyBF');
+        disp(strcat(num2str(i),':',num2str(j)));
+    end
+end
 %% Hierarchi-KTST
 
 [trialNum, channelNum, frequencyBinNum, timeBinNum] = size(data_tf.powspctrm);
