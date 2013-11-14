@@ -24,18 +24,6 @@ switch method
             thresh = thresh';
             h = (pValuesSorted<=thresh);
         end
-    case 'SMK'
-        alpha1 = alpha/(1+alpha);
-        thresh = (((1:testNum)/testNum)/ c(testNum))  * alpha1;
-        thresh = thresh';
-        h = (pValuesSorted<=thresh);
-        r1 = sum(h);
-        if r1 ~= 0 || r1 ~= testNum
-            alpha2 = (testNum/(testNum - r1)) * alpha1;
-            thresh = ((1:testNum)/testNum)  * alpha2;
-            thresh = thresh';
-            h = (pValuesSorted<=thresh);
-        end
 end
 
 % undo the sorting 

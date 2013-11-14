@@ -7,7 +7,7 @@ cfgSim.timeNum = 50;
 cfgSim.freqNum = 45;
 cfgSim.affectedChannel = [208:217];
 cfgSim.sigmaVar = [4,7];
-cfgSim.ampVar = [7,12]; % 1
+%cfgSim.ampVar = [7,12]; % 1
 %cfgSim.ampVar = [70,120]; %2
 %cfgSim.ampVar = [270,320]; %3
 cfgSim.effectSize = 11;
@@ -20,31 +20,41 @@ targets(1,1:round(cfgSim.trialNum/2)) = 1;
 %cfgHrc.coefNum = 5;
 cfgHrc.criticalAlpha = 0.05;
 cfgHrc.iterations = 10000;
-% Experiment 1
-for i = 1 : 10
-    % Data simulation
-    [data_tf,mask,SNR(i)] = simulatingData(cfgSim,data_tf);
-    % Cluster-based Test
-    [clusterMask] = clusterBasedTest(data_tf,targets);
-    [sensitivityCluster(i),specificityCluster(i)] = testEvaluation(clusterMask,mask);
-    % Hierarchy test FDR-BH
-    cfgHrc.MCPMethod = {'BH','BH','BH'};
-    [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-    [sensitivityHierarchyBH(i),specificityHierarchyBH(i)] = testEvaluation(hierarchyMask,mask);
-    % Hierarchy test FDR-BR
-    cfgHrc.MCPMethod = {'BR','BR','BR'};
-    [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-    [sensitivityHierarchyBR(i),specificityHierarchyBR(i)] = testEvaluation(hierarchyMask,mask);
-    % Hierarchy test Bonferroni
-    cfgHrc.MCPMethod = {'BF','BF','BF'};
-    [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-    [sensitivityHierarchyBF(i),specificityHierarchyBF(i)] = testEvaluation(hierarchyMask,mask);
-    save('tempResult.mat','SNR','sensitivityCluster','specificityCluster','sensitivityHierarchyBH','specificityHierarchyBH', ...
-        'sensitivityHierarchyBF','specificityHierarchyBF','sensitivityHierarchyBR','specificityHierarchyBR');
-    disp(i);
+%cfgHrc.featureExt = 'DCT';
+
+% Experiment 1: Different MCP correction methods for different SNRs
+ampVar = [7,12;70,120;270,320];
+cfgHrc.featureExt = 'DCT';
+cfgHrc.coefNum = 5;
+for j = 1 : size(ampVar,1)
+    cfgSim.ampVar = ampVar(j,:);
+    for i = 1 : 10
+        % Data simulation
+        [data_tf,mask,SNR(j,i)] = simulatingData(cfgSim,data_tf);
+        % Cluster-based Test
+        [clusterMask] = clusterBasedTest(data_tf,targets);
+        [sensitivityCluster(j,i),specificityCluster(j,i)] = testEvaluation(clusterMask,mask);
+        % Hierarchy test FDR-BH
+        cfgHrc.MCPMethod = {'BH','BH','BH'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBH(j,i),specificityHierarchyBH(j,i)] = testEvaluation(hierarchyMask,mask);
+        % Hierarchy test FDR-BR
+        cfgHrc.MCPMethod = {'BR','BR','BR'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBR(j,i),specificityHierarchyBR(j,i)] = testEvaluation(hierarchyMask,mask);
+        % Hierarchy test Bonferroni
+        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
+        save('tempResult.mat','SNR','sensitivityCluster','specificityCluster','sensitivityHierarchyBH','specificityHierarchyBH', ...
+            'sensitivityHierarchyBF','specificityHierarchyBF','sensitivityHierarchyBR','specificityHierarchyBR');
+        disp(strcat(num2str(j),':',num2str(i)));
+    end
 end
 
-% Experiment 2
+% Experiment 2: Number of DCT coefficients
+cfgHrc.featureExt = 'DCT';
+cfgSim.ampVar = [7,12];
 for i = 1 : 10
     % Data simulation
     [data_tf,mask,SNR(i)] = simulatingData(cfgSim,data_tf);
@@ -55,6 +65,29 @@ for i = 1 : 10
         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
         [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
         save('tempResult.mat','SNR','sensitivityHierarchyBF','specificityHierarchyBF');
+        disp(strcat(num2str(i),':',num2str(j)));
+    end
+end
+
+% Experiment 3: KTST without DCT
+ampVar = [7,12;70,120;270,320];
+for j = 2 : size(ampVar,1)
+    cfgSim.ampVar = ampVar(j,:);
+    for i = 1 : 10
+        % Data simulation
+        [data_tf,mask,SNR(j,i)] = simulatingData(cfgSim,data_tf);
+        % Just KTST
+        cfgHrc.featureExt = '';
+        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyKTST(j,i),specificityHierarchyKTST(j,i)] = testEvaluation(hierarchyMask,mask);
+        % KTST + DCT
+        cfgHrc.featureExt = 'DCT';
+        cfgHrc.coefNum = [cfgSim.freqNum,cfgSim.timeNum];
+        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyDCT(j,i),specificityHierarchyDCT(j,i)] = testEvaluation(hierarchyMask,mask);
+        save('tempResult2.mat','SNR','sensitivityHierarchyKTST','specificityHierarchyKTST','sensitivityHierarchyDCT','specificityHierarchyDCT');
         disp(strcat(num2str(i),':',num2str(j)));
     end
 end
@@ -142,68 +175,6 @@ for i = 1 : channelNum
     end
 end
 
-%% Plotting the results 2
-
-temp = [];
-temp{1} = localizer((localizer(:,2)>=3 & localizer(:,2)<=6),:);
-temp{2} = localizer((localizer(:,2)>=7 & localizer(:,2)<=14),:);
-temp{3} = localizer((localizer(:,2)>=15 & localizer(:,2)<=30),:);
-temp{4} = localizer((localizer(:,2)>=31 & localizer(:,2)<=45),:);
-TF1 = data_tf;
-TF1.powspctrm(101:200,:,:,:) = [];
-TF2 = data_tf;
-TF2.powspctrm(1:100,:,:,:) = [];
-for i = 1 : 4
-    if ~isempty(temp{i})
-        cfg = [];
-        cfg.foilim = minmax(temp{i}(:,2)');
-        data_TF_planar_cmb_left1 = ft_freqdescriptives(cfg, TF1);
-        data_TF_planar_cmb_right1  = ft_freqdescriptives(cfg, TF2);
-        raweffect = data_TF_planar_cmb_left1.powspctrm - data_TF_planar_cmb_right1.powspctrm;
-        plotFormat.label = data_TF_planar_cmb_left1.label;
-        plotFormat.freq = i;
-        plotFormat.dimord = 'chan_freq_time';
-        plotFormat.time = data_TF_planar_cmb_left1.time;
-        plotFormat.cfg = data_TF_planar_cmb_left1.cfg;
-        plotFormat.grad = data_TF_planar_cmb_left1.grad;
-        plotFormat.powspctrm = raweffect;
-        plotFormat.raweffect = raweffect;
-        plotcfg = [];
-        plotcfg.interpolation = 'v4';
-        plotcfg.layout = 'CTF275.lay';
-        plotcfg.comment = 'no';
-        plotcfg.parameter = 'raweffect';
-        timePoints = [];
-        timePoints = unique(temp{i}(:,3));
-        figNum = ceil(length(timePoints)/20);
-        
-        for k = 1 : figNum
-            figPointer = figure;
-            if k == figNum && figNum ~= 1 && mod(length(timePoints),20) ~= 0
-                n = mod(length(timePoints),20);
-            else
-                n = 20;
-            end
-            for j = 1 : min(n,length(timePoints))
-                plotcfg.highlight = 'on';
-                chan = temp{i}(temp{i}(:,3)==timePoints(j+(k-1)*20),1);
-                plotcfg.highlightchannel =  plotFormat.label(chan,1);
-                plotcfg.highlightsymbol = '*';
-                plotcfg.highlightcolor =  [0 0 0]; %(black))
-                plotcfg.highlightsize = 6;
-                plotcfg.highlightfontsize = 8;
-                plotcfg.marker = 'off';
-                subplot(4,5,j);
-                ft_topoplotTFR(plotcfg,plotFormat);
-                title(strcat('Time = ',num2str(plotFormat.time(timePoints(j+(k-1)*20))),' - Freq = ',num2str(cfg.foilim(1)),'-',num2str(cfg.foilim(2))));
-            end
-            %saveas(figPointer,strcat('H:\NILAB\Master Thesis\Figures\Hierarchy Cross-Validation final\sub3_ktst_',num2str(cfg.foilim(1)),'-',num2str(cfg.foilim(2)),'_',num2str(k)),'fig');
-            %close(figPointer);
-        end
-    else
-        continue;
-    end
-end
 %% White noise checking
 e = 0;
 for k = 1 : 100

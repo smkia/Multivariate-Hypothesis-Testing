@@ -1,18 +1,33 @@
 function [h] = hierarchyTest(cfg,data_tf,targets)
 [trialNum, channelNum, frequencyBinNum, timeBinNum] = size(data_tf.powspctrm);
 data_tf.powspctrm(isnan(data_tf.powspctrm)) = 0;
-coefNum = cfg.coefNum;
+if strcmp(cfg.featureExt,'DCT')
+    if numel(cfg.coefNum) == 1
+        coefNum(1,1) = cfg.coefNum;
+        coefNum(1,2) = cfg.coefNum;
+    else
+        coefNum = cfg.coefNum;
+    end
+end
 criticalAlpha = cfg.criticalAlpha;
 FDRMethod = cfg.MCPMethod;
 ktstcfg = [];
 ktstcfg.iterations = cfg.iterations;
 slidingWinSize = 2;
+h = zeros(channelNum,frequencyBinNum,timeBinNum);
 for z = 1 : channelNum
-    features = zeros(coefNum*coefNum,trialNum);
-    for i = 1 : trialNum
-        D =[];
-        D = dct2(squeeze(data_tf.powspctrm(i,z,:,:)));
-        features(:,i) = reshape(D(1:coefNum,1:coefNum),coefNum*coefNum,1);
+    if strcmp(cfg.featureExt,'DCT')
+        features = zeros(coefNum(1,1)*coefNum(1,2),trialNum);
+        for i = 1 : trialNum
+            D =[];
+            D = dct2(squeeze(data_tf.powspctrm(i,z,:,:)));
+            features(:,i) = reshape(D(1:coefNum(1,1),1:coefNum(1,2)),coefNum(1,1)*coefNum(1,2),1);
+        end
+    else
+        features = zeros(frequencyBinNum*timeBinNum,trialNum);
+        for i = 1 : trialNum
+            features(:,i) = reshape(data_tf.powspctrm(i,z,:,:),frequencyBinNum*timeBinNum,1);
+        end
     end
     features(isnan(features)) = 0;
     features = mapstd(features);
@@ -28,16 +43,25 @@ else
     [hChannels] = double(pChannels <= correctedAlpha);
 end
 significantChannels = find(hChannels);
+if isempty(significantChannels)
+    return;
+end
 for i = 1 : length(significantChannels)
     data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
     data = padarray(data,[0,slidingWinSize,0],'replicate');
     for j = 1+slidingWinSize : frequencyBinNum+slidingWinSize
-        features = zeros(coefNum,trialNum);
-        for k = 1 : trialNum
-            D =[];
-            D = dct2(squeeze(data(k,j-slidingWinSize:j+slidingWinSize,:)));
-            features(:,k) = reshape(D(1,1:coefNum),coefNum,1);
-%                       features(:,k) = squeeze(data_tf.powspctrm(k,significantChannels(i),j,:));
+        if strcmp(cfg.featureExt,'DCT')
+            features = zeros(coefNum(1,1),trialNum);
+            for k = 1 : trialNum
+                D =[];
+                D = dct2(squeeze(data(k,j-slidingWinSize:j+slidingWinSize,:)));
+                features(:,k) = reshape(D(1,1:coefNum(1,1)),coefNum(1,1),1);
+            end
+        else
+            features = zeros(((2*slidingWinSize)+1)*timeBinNum,trialNum);
+            for k = 1 : trialNum
+                features(:,k) = reshape(squeeze(data(k,j-slidingWinSize:j+slidingWinSize,:)),((2*slidingWinSize)+1)*timeBinNum,1);
+            end
         end
         features(isnan(features)) = 0;
         features = mapstd(features);
@@ -58,12 +82,19 @@ significantFreqChan = significantChannels(temp);
 for i = 1 : length(significantChannels)
     data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
     data = padarray(data,[0,0,slidingWinSize],'replicate');
-    for j = 1+slidingWinSize : timeBinNum+slidingWinSize 
-        features = zeros(coefNum,trialNum);
-        for k = 1 : trialNum
-            D =[];
-            D = dct2(squeeze(data(k,:,j-slidingWinSize:j+slidingWinSize)));
-            features(:,k) = reshape(D(1:coefNum,1),coefNum,1);
+    for j = 1+slidingWinSize : timeBinNum+slidingWinSize
+        if strcmp(cfg.featureExt,'DCT')
+            features = zeros(coefNum(1,2),trialNum);
+            for k = 1 : trialNum
+                D =[];
+                D = dct2(squeeze(data(k,:,j-slidingWinSize:j+slidingWinSize)));
+                features(:,k) = reshape(D(1:coefNum(1,2),1),coefNum(1,2),1);
+            end
+        else
+            features = zeros(((2*slidingWinSize)+1)*frequencyBinNum,trialNum);
+            for k = 1 : trialNum
+                features(:,k) = reshape(squeeze(data(k,:,j-slidingWinSize:j+slidingWinSize)),((2*slidingWinSize)+1)*frequencyBinNum,1);
+            end
         end
         features(isnan(features)) = 0;
         features = mapstd(features);
@@ -80,7 +111,6 @@ else
 end
 [temp, significantTime] = find(hTime);
 significantTimeChan = significantChannels(temp);
-h = zeros(channelNum,frequencyBinNum,timeBinNum);
 for i = 1 : length(significantChannels)
     sc(i).freqs = significantFreq(significantFreqChan == significantChannels(i));
     sc(i).time = significantTime(significantTimeChan == significantChannels(i));
@@ -88,17 +118,3 @@ end
 for i = 1 : length(significantChannels)
     h(significantChannels(i),sc(i).freqs,sc(i).time) = 1;
 end
-% localizer = [];
-% l = 1;
-% for i = 1 : channelNum
-%     for j = 1 : frequencyBinNum
-%         for k = 1 : timeBinNum
-%             if h(i,j,k) == 1
-%                 localizer(l,1) = i;
-%                 localizer(l,2) = j;
-%                 localizer(l,3) = k;
-%                 l = l + 1;
-%             end
-%         end
-%     end
-% end
