@@ -70,8 +70,8 @@ for i = 1 : 10
 end
 
 % Experiment 3: KTST without DCT
-ampVar = [7,12;70,120;270,320];
-for j = 2 : size(ampVar,1)
+ampVar = [7,12;35,60;70,120;270,320];
+for j = 1 : size(ampVar,1)
     cfgSim.ampVar = ampVar(j,:);
     for i = 1 : 10
         % Data simulation

@@ -51,11 +51,11 @@ for i = 1 : length(significantChannels)
     data = padarray(data,[0,slidingWinSize,0],'replicate');
     for j = 1+slidingWinSize : frequencyBinNum+slidingWinSize
         if strcmp(cfg.featureExt,'DCT')
-            features = zeros(coefNum(1,1),trialNum);
+            features = zeros(coefNum(1,2),trialNum);
             for k = 1 : trialNum
                 D =[];
                 D = dct2(squeeze(data(k,j-slidingWinSize:j+slidingWinSize,:)));
-                features(:,k) = reshape(D(1,1:coefNum(1,1)),coefNum(1,1),1);
+                features(:,k) = reshape(D(1,1:coefNum(1,2)),coefNum(1,2),1);
             end
         else
             features = zeros(((2*slidingWinSize)+1)*timeBinNum,trialNum);
@@ -84,11 +84,11 @@ for i = 1 : length(significantChannels)
     data = padarray(data,[0,0,slidingWinSize],'replicate');
     for j = 1+slidingWinSize : timeBinNum+slidingWinSize
         if strcmp(cfg.featureExt,'DCT')
-            features = zeros(coefNum(1,2),trialNum);
+            features = zeros(coefNum(1,1),trialNum);
             for k = 1 : trialNum
                 D =[];
                 D = dct2(squeeze(data(k,:,j-slidingWinSize:j+slidingWinSize)));
-                features(:,k) = reshape(D(1:coefNum(1,2),1),coefNum(1,2),1);
+                features(:,k) = reshape(D(1:coefNum(1,1),1),coefNum(1,1),1);
             end
         else
             features = zeros(((2*slidingWinSize)+1)*frequencyBinNum,trialNum);
