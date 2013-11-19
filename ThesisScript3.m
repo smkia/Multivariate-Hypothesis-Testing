@@ -55,126 +55,71 @@ end
 % Experiment 2: Number of DCT coefficients
 cfgHrc.featureExt = 'DCT';
 cfgSim.ampVar = [7,12];
+cfgHrc.MCPMethod = {'BF','BF','BF'};
 for i = 1 : 10
     % Data simulation
     [data_tf,mask,SNR(i)] = simulatingData(cfgSim,data_tf);
-    for j = 1 : 10
+    for j = 11 : 30
         % Hierarchy test Bonferroni
         cfgHrc.coefNum = j;
-        cfgHrc.MCPMethod = {'BF','BF','BF'};
         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
         [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
         save('tempResult.mat','SNR','sensitivityHierarchyBF','specificityHierarchyBF');
         disp(strcat(num2str(i),':',num2str(j)));
     end
 end
+save('Experiment2.mat','SNR','sensitivityHierarchyBF','specificityHierarchyBF');
 
 % Experiment 3: KTST without DCT
-ampVar = [7,12;35,60;70,120;270,320];
+ampVar = [7,12;14,25;35,60;70,120;270,320];
+cfgHrc.MCPMethod = {'BF','BF','BF'};
 for j = 1 : size(ampVar,1)
     cfgSim.ampVar = ampVar(j,:);
     for i = 1 : 10
         % Data simulation
         [data_tf,mask,SNR(j,i)] = simulatingData(cfgSim,data_tf);
-        % Just KTST
-        cfgHrc.featureExt = '';
-        cfgHrc.MCPMethod = {'BF','BF','BF'};
-        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-        [sensitivityHierarchyKTST(j,i),specificityHierarchyKTST(j,i)] = testEvaluation(hierarchyMask,mask);
-        % KTST + DCT
+%         % Just KTST
+%         cfgHrc.featureExt = '';
+%         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+%         [sensitivityHierarchyKTST(j,i),specificityHierarchyKTST(j,i)] = testEvaluation(hierarchyMask,mask);
+%         % KTST + DCT
+%         cfgHrc.featureExt = 'DCT';
+%         cfgHrc.coefNum = [cfgSim.freqNum,cfgSim.timeNum];
+%         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+%         [sensitivityHierarchyDCT(j,i),specificityHierarchyDCT(j,i)] = testEvaluation(hierarchyMask,mask);
+        % KTST + DCT + Coef
         cfgHrc.featureExt = 'DCT';
-        cfgHrc.coefNum = [cfgSim.freqNum,cfgSim.timeNum];
-        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        cfgHrc.coefNum = [5];
         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-        [sensitivityHierarchyDCT(j,i),specificityHierarchyDCT(j,i)] = testEvaluation(hierarchyMask,mask);
-        save('tempResult2.mat','SNR','sensitivityHierarchyKTST','specificityHierarchyKTST','sensitivityHierarchyDCT','specificityHierarchyDCT');
+        [sensitivityHierarchyDCTCoef(j,i),specificityHierarchyDCTCoef(j,i)] = testEvaluation(hierarchyMask,mask);
+        save('tempResult2.mat','SNR','sensitivityHierarchyKTST','specificityHierarchyKTST','sensitivityHierarchyDCT','specificityHierarchyDCT', ...
+            'sensitivityHierarchyDCTCoef','specificityHierarchyDCTCoef');
         disp(strcat(num2str(i),':',num2str(j)));
     end
 end
-%% Hierarchi-KTST
 
-[trialNum, channelNum, frequencyBinNum, timeBinNum] = size(data_tf.powspctrm);
-data_tf.powspctrm(isnan(data_tf.powspctrm)) = 0;
-criticalAlpha = 0.05;
-FDRMethod = {'BH','BH','BH'};
-ktstcfg = [];
-coefNum = 5;
-ktstcfg.iterations = 10000;
-hChannels = [];
-pChannels = [];
-for z = 1 : channelNum
-    features = zeros(frequencyBinNum*timeBinNum,trialNum);
-    for i = 1 : trialNum
-        features(:,i) = reshape(data_tf.powspctrm(i,z,:,:),frequencyBinNum*timeBinNum,1);
-    end
-    features(isnan(features)) = 0;
-    features = mapstd(features);
-    % KTST
-    [pChannels(z)] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
-    disp(strcat(num2str(z),'/',num2str(channelNum),':',num2str(pChannels(z))));
-end
-[hChannels] = FDR(pChannels,criticalAlpha,FDRMethod{1});
-significantChannels = find(hChannels);
-
-for i = 1 : length(significantChannels)
-    data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
-    data = padarray(data,[0,floor(coefNum/2),0],'replicate');
-    for j = 1+floor(coefNum/2) : frequencyBinNum+floor(coefNum/2)
-        features = zeros(coefNum*timeBinNum,trialNum);
-        for k = 1 : trialNum
-            features(:,k) = reshape(squeeze(data(k,j-2:j+2,:)),coefNum*timeBinNum,1);
-        end
-        features(isnan(features)) = 0;
-        features = mapstd(features);
-        % KTST
-        [pFreqs(i,j-floor(coefNum/2))] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
-        disp(strcat(num2str(i),'/',num2str(length(significantChannels)),':',num2str(j-floor(coefNum/2)),':',num2str(pFreqs(i,j-floor(coefNum/2)))));
+% Experiment 4: White noise checking
+cfgSim.affectedChannel = [];
+cfgHrc.featureExt = 'DCT';
+coefNum = [5,15,30,45];
+for j = 1 : length(coefNum)
+    cfgHrc.coefNum = coefNum(j);
+    for i = 1 : 10
+        % Data simulation
+        [data_tf,mask,SNR(j,i)] = simulatingData(cfgSim,data_tf);
+        % Hierarchy test FDR-BH
+        cfgHrc.MCPMethod = {'BH','BH','BH'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBH(j,i),specificityHierarchyBH(j,i)] = testEvaluation(hierarchyMask,mask);
+        % Hierarchy test Bonferroni
+        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
+        save('tempResult3.mat','SNR','sensitivityHierarchyBH','specificityHierarchyBH', ...
+            'sensitivityHierarchyBF','specificityHierarchyBF');
+        disp(i);
     end
 end
-[hFreqs] = FDR(pFreqs,criticalAlpha,FDRMethod{2});
-[temp, significantFreq] = find(hFreqs);
-significantFreqChan = significantChannels(temp);
-
-for i = 1 : length(significantChannels)
-    data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
-    data = padarray(data,[0,0,floor(coefNum/2)],'replicate');
-    for j = 1+floor(coefNum/2) : timeBinNum+floor(coefNum/2) 
-        features = zeros(coefNum*frequencyBinNum,trialNum);
-        for k = 1 : trialNum
-            features(:,k) = reshape(squeeze(data(k,:,j-2:j+2)),coefNum*frequencyBinNum,1);
-        end
-        features(isnan(features)) = 0;
-        features = mapstd(features);
-        [pTime(i,j-floor(coefNum/2))] = KTST(features(:,targets == 0)',features(:,targets == 1)',ktstcfg);
-        disp(strcat(num2str(i),'/',num2str(length(significantChannels)),':',num2str(j-floor(coefNum/2)),':',num2str(pTime(i,j-floor(coefNum/2)))));
-    end
-end
-[hTime] = FDR(pTime,criticalAlpha,FDRMethod{3});
-[temp, significantTime] = find(hTime);
-significantTimeChan = significantChannels(temp);
-h = zeros(channelNum,frequencyBinNum,timeBinNum);
-for i = 1 : length(significantChannels)
-    sc(i).freqs = significantFreq(significantFreqChan == significantChannels(i));
-    sc(i).time = significantTime(significantTimeChan == significantChannels(i));
-end
-for i = 1 : length(significantChannels)
-    h(significantChannels(i),sc(i).freqs,sc(i).time) = 1;
-end
-localizer = [];
-l = 1;
-for i = 1 : channelNum
-    for j = 1 : frequencyBinNum
-        for k = 1 : timeBinNum
-            if h(i,j,k) == 1
-                localizer(l,1) = i;
-                localizer(l,2) = j;
-                localizer(l,3) = k;
-                l = l + 1;
-            end
-        end
-    end
-end
-
 %% White noise checking
 e = 0;
 for k = 1 : 100
