@@ -59,7 +59,7 @@ cfgHrc.MCPMethod = {'BF','BF','BF'};
 for i = 1 : 10
     % Data simulation
     [data_tf,mask,SNR(i)] = simulatingData(cfgSim,data_tf);
-    for j = 11 : 30
+    for j = 1 : 30
         % Hierarchy test Bonferroni
         cfgHrc.coefNum = j;
         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
@@ -78,16 +78,16 @@ for j = 1 : size(ampVar,1)
     for i = 1 : 10
         % Data simulation
         [data_tf,mask,SNR(j,i)] = simulatingData(cfgSim,data_tf);
-%         % Just KTST
-%         cfgHrc.featureExt = '';
-%         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-%         [sensitivityHierarchyKTST(j,i),specificityHierarchyKTST(j,i)] = testEvaluation(hierarchyMask,mask);
-%         % KTST + DCT
-%         cfgHrc.featureExt = 'DCT';
-%         cfgHrc.coefNum = [cfgSim.freqNum,cfgSim.timeNum];
-%         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
-%         [sensitivityHierarchyDCT(j,i),specificityHierarchyDCT(j,i)] = testEvaluation(hierarchyMask,mask);
-        % KTST + DCT + Coef
+        % Just KTST
+        cfgHrc.featureExt = '';
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyKTST(j,i),specificityHierarchyKTST(j,i)] = testEvaluation(hierarchyMask,mask);
+        % KTST + DCT
+        cfgHrc.featureExt = 'DCT';
+        cfgHrc.coefNum = [cfgSim.freqNum,cfgSim.timeNum];
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyDCT(j,i),specificityHierarchyDCT(j,i)] = testEvaluation(hierarchyMask,mask);
+        KTST + DCT + Coef
         cfgHrc.featureExt = 'DCT';
         cfgHrc.coefNum = [5];
         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
@@ -115,11 +115,37 @@ for j = 1 : length(coefNum)
         cfgHrc.MCPMethod = {'BF','BF','BF'};
         [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
         [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
-        save('tempResult3.mat','SNR','sensitivityHierarchyBH','specificityHierarchyBH', ...
+        save('tempResult4.mat','SNR','sensitivityHierarchyBH','specificityHierarchyBH', ...
             'sensitivityHierarchyBF','specificityHierarchyBF');
         disp(i);
     end
 end
+
+% Experiment 5: Permuted Labels
+cfgHrc.featureExt = 'DCT';
+cfgHrc.coefNum = 5;
+ampVar = [7,12;14,25;35,60;70,120;270,320];
+for j = 1 : size(ampVar,1)
+    cfgSim.ampVar = ampVar(j,:);
+    for i = 1 : 10
+        targets = zeros(1,cfgSim.trialNum);
+        targets(1,randperm(cfgSim.trialNum,round(cfgSim.trialNum/2))) = 1;
+        % Data simulation
+        [data_tf,mask,SNR(j,i)] = simulatingData(cfgSim,data_tf);
+        % Hierarchy test FDR-BH
+        cfgHrc.MCPMethod = {'BH','BH','BH'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBH(j,i),specificityHierarchyBH(j,i)] = testEvaluation(hierarchyMask,mask);
+        % Hierarchy test Bonferroni
+        cfgHrc.MCPMethod = {'BF','BF','BF'};
+        [hierarchyMask] = hierarchyTest(cfgHrc,data_tf,targets);
+        [sensitivityHierarchyBF(j,i),specificityHierarchyBF(j,i)] = testEvaluation(hierarchyMask,mask);
+        save('tempResult5.mat','SNR','sensitivityHierarchyBH','specificityHierarchyBH', ...
+            'sensitivityHierarchyBF','specificityHierarchyBF');
+        disp(i);
+    end
+end
+
 %% White noise checking
 e = 0;
 for k = 1 : 100
@@ -240,12 +266,4 @@ for iter = 1 : 100
     state(1,iter) = 3;
     disp(strcat(num2str(iter),':',num2str(state(1,iter))));
 end
-
-
-
-%% Evaluation
-FP = sum(sum(sum(and(~m,stat.mask))))/sum(sum(sum(~m))); 
-TP = sum(sum(sum(and(m,stat.mask))))/sum(sum(sum(m)));
-FP = sum(sum(sum(and(~m,h))))/sum(sum(sum(~m))); 
-TP = sum(sum(sum(and(m,h))))/sum(sum(sum(m)));
  
