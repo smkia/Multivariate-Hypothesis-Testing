@@ -56,10 +56,14 @@ switch cfg.kernelType
     case 'gaussian'
         squared_distance_matrix = pdist2(XY,XY,'euclidean');
         if ~isfield(cfg,'kernelParam')
-            cfg.kernelParam = median(squared_distance_matrix(:));
+            dists = squared_distance_matrix.^2;
+            dists = dists-tril(dists);
+            dists=reshape(dists,size(XY,1)^2,1);
+            cfg.kernelParam = sqrt(0.5*median(dists(dists>0)));
+            %cfg.kernelParam = median(squared_distance_matrix(:));
         end;
-        sigma2 = cfg.kernelParam;
-        K = exp(-squared_distance_matrix / sigma2);
+        sigma = cfg.kernelParam;
+        K = exp(-(squared_distance_matrix.^2)/2 / (sigma^2));
     otherwise
         error('Wrong kernel type.');
 end
@@ -78,9 +82,9 @@ function [mmd] = MMD2u(K,m,n)
 Kx = K(1:m, 1:m);
 Ky = K(m+1:end, m+1:end);
 Kxy = K(1:m, m+1:end);
-mmd =  1 / (m * (m - 1)) * (sum(sum(Kx)) - sum(diag(Kx))) + ...
-    1 / (n * (n - 1)) * (sum(sum(Ky)) - sum(diag(Ky))) - ...
-    2 / (m * n) * (sum(sum(Kxy)) - sum(diag(Kxy)));
+mmd =  (1 / (m * (m - 1)) * (sum(sum(Kx)) - sum(diag(Kx)))) + ...
+    (1 / (n * (n - 1)) * (sum(sum(Ky)) - sum(diag(Ky)))) - ...
+    (2 / (m * n) * (sum(sum(Kxy))));
 end
 
 function [mmd2u_null] = compute_null_distribution (K, m, n, iterations)
