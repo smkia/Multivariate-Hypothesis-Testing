@@ -1,4 +1,14 @@
-function [h] = hierarchyTest(cfg,data_tf,targets)
+function [h,pChannels,pFreqs,pTime] = hierarchyTest(cfg,data_tf,targets)
+if ~isfield(cfg,'channels')
+    cfg.channels = 1:size(data_tf.powspctrm,2);
+end
+if ~isfield(cfg,'freqs')
+    cfg.freqs = 1:size(data_tf.powspctrm,3);
+end
+if ~isfield(cfg,'times')
+    cfg.times = 1:size(data_tf.powspctrm,4);
+end
+data_tf.powspctrm = data_tf.powspctrm(:,cfg.channels,cfg.freqs,cfg.times);
 [trialNum, channelNum, frequencyBinNum, timeBinNum] = size(data_tf.powspctrm);
 data_tf.powspctrm(isnan(data_tf.powspctrm)) = 0;
 if strcmp(cfg.featureExt,'DCT')
@@ -8,19 +18,25 @@ if strcmp(cfg.featureExt,'DCT')
     else
         coefNum = cfg.coefNum;
     end
+else
+    coefNum = 0;
 end
 criticalAlpha = cfg.criticalAlpha;
 FDRMethod = cfg.MCPMethod;
 ktstcfg = [];
 ktstcfg.iterations = cfg.iterations;
-slidingWinSize = 2;
+ktstcfg.nullDist = cfg.nullDist;
+slidingWinSize = cfg.slidingWin;
 h = zeros(channelNum,frequencyBinNum,timeBinNum);
-for z = 1 : channelNum
+parfor z = 1 : channelNum
     if strcmp(cfg.featureExt,'DCT')
         features = zeros(coefNum(1,1)*coefNum(1,2),trialNum);
         for i = 1 : trialNum
             D =[];
             D = dct2(squeeze(data_tf.powspctrm(i,z,:,:)));
+%             tempD = D(1,1);
+%             D = D./tempD;
+%             D(1,1) = tempD;
             features(:,i) = reshape(D(1:coefNum(1,1),1:coefNum(1,2)),coefNum(1,1)*coefNum(1,2),1);
         end
     else
@@ -44,17 +60,22 @@ else
 end
 significantChannels = find(hChannels);
 if isempty(significantChannels)
+    pFreqs = [];
+    pTime = [];
     return;
 end
 for i = 1 : length(significantChannels)
     data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
     data = padarray(data,[0,slidingWinSize,0],'replicate');
-    for j = 1+slidingWinSize : frequencyBinNum+slidingWinSize
+    parfor j = 1+slidingWinSize : frequencyBinNum+slidingWinSize
         if strcmp(cfg.featureExt,'DCT')
             features = zeros(coefNum(1,2),trialNum);
             for k = 1 : trialNum
                 D =[];
                 D = dct2(squeeze(data(k,j-slidingWinSize:j+slidingWinSize,:)));
+%                 tempD = D(1,1);
+%                 D = D./tempD;
+%                 D(1,1) = tempD;
                 features(:,k) = reshape(D(1,1:coefNum(1,2)),coefNum(1,2),1);
             end
         else
@@ -82,12 +103,15 @@ significantFreqChan = significantChannels(temp);
 for i = 1 : length(significantChannels)
     data = squeeze(data_tf.powspctrm(:,significantChannels(i),:,:));
     data = padarray(data,[0,0,slidingWinSize],'replicate');
-    for j = 1+slidingWinSize : timeBinNum+slidingWinSize
+    parfor j = 1+slidingWinSize : timeBinNum+slidingWinSize
         if strcmp(cfg.featureExt,'DCT')
             features = zeros(coefNum(1,1),trialNum);
             for k = 1 : trialNum
                 D =[];
                 D = dct2(squeeze(data(k,:,j-slidingWinSize:j+slidingWinSize)));
+%                 tempD = D(1,1);
+%                 D = D./tempD;
+%                 D(1,1) = tempD;
                 features(:,k) = reshape(D(1:coefNum(1,1),1),coefNum(1,1),1);
             end
         else
