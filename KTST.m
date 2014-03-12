@@ -57,12 +57,22 @@ switch cfg.kernelType
         squared_distance_matrix = pdist2(XY,XY,'euclidean');
         if ~isfield(cfg,'kernelParam')
             dists = squared_distance_matrix.^2;
+<<<<<<< HEAD
             dists = tril(dists,-1);
             dists = reshape(dists,size(XY,1)^2,1);
             cfg.kernelParam = sqrt(0.5*median(dists(dists>0)));
         end;
         sigma = cfg.kernelParam;
         K = exp(-(squared_distance_matrix.^2)/2 / sigma^2);
+=======
+            dists = dists-tril(dists);
+            dists=reshape(dists,size(XY,1)^2,1);
+            cfg.kernelParam = sqrt(0.5*median(dists(dists>0)));
+            %cfg.kernelParam = median(squared_distance_matrix(:));
+        end;
+        sigma = cfg.kernelParam;
+        K = exp(-(squared_distance_matrix.^2)/2 / (sigma^2));
+>>>>>>> 9f11cd5ad3947ccfaf7f8ac55d2073575345ca24
     otherwise
         error('Wrong kernel type.');
 end
@@ -86,7 +96,11 @@ Ky = K(m+1:end, m+1:end);
 Kxy = K(1:m, m+1:end);
 mmd =  (1 / (m * (m - 1)) * (sum(sum(Kx)) - sum(diag(Kx)))) + ...
     (1 / (n * (n - 1)) * (sum(sum(Ky)) - sum(diag(Ky)))) - ...
+<<<<<<< HEAD
     (2 / (m * n) * sum(sum(Kxy)));
+=======
+    (2 / (m * n) * (sum(sum(Kxy))));
+>>>>>>> 9f11cd5ad3947ccfaf7f8ac55d2073575345ca24
 end
 
 function [mmd2u_null] = compute_null_distribution (K, m, n, iterations)
